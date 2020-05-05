@@ -63,7 +63,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     scan_interval = config.get(CONF_SCAN_INTERVAL)
     sensors = []
     sensor_name = '{} - '.format(name)
-    updater = dpcUpdater(istat, scan_interval)
+    updater = dpcUpdater(hass, istat, scan_interval)
     await updater.async_update()
     for warning_type in warnings:
         uid = '{}_{}'.format(name, warning_type)
@@ -144,12 +144,16 @@ class dpcWarningsSensor(dpcSensor):
         return WARNING_TYPES[self._warning_type][1]
 
 class dpcUpdater:
-    def __init__(self, istat, scan_interval):
+    def __init__(self, hass, istat, scan_interval):
+        self._hass = hass
         self._istat = istat
         self.dpc_output = None
         self.async_update = Throttle(scan_interval)(self._async_update)
 
     async def _async_update(self):
+        await self._hass.async_add_executor_job(self._update_jsondata)
+
+    def _update_jsondata(self):
         jsondata = {}
         url_base = 'http://www.protezionecivilepop.tk/allerte?citta='
         URLs = [
